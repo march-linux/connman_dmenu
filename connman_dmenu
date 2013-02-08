@@ -1,0 +1,4 @@
+#!/bin/bash
+connmanctl scan wifi
+choice="$(connmanctl services | grep _none | tr -s ' ' | cut -f2 -d ' ' | dmenu)"
+connmanctl connect "$choice"
