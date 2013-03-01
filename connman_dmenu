@@ -1,4 +1,6 @@
 #!/bin/bash
 connmanctl scan wifi
-choice="$(connmanctl services | grep _none | tr -s ' ' | cut -f2 -d ' ' | dmenu -p "WIFI?")"
-connmanctl connect "$choice"
+choice="$(connmanctl services | grep _none | tr -s ' ' | cut -f2 -d ' ' | dmenu -p "select wifi")"
+id="$(connmanctl services | grep _none | tr -s ' ' | cut -f2,4 -d ' ' | grep "^$choice " -m 1 | cut -f 2 -d ' ')"
+echo "select: $choice { $id }"
+connmanctl connect "$id"
