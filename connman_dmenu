@@ -43,25 +43,23 @@ security="$(get_service_security "$service_id")"
 if [[ "$security" == none ]]; then
     # do nothing
     echo "no security"
-elif [[ "$security" == wep ]]; then
-    dmenu_notify "really? you use wep?"
-    exit 1
-elif [[ "$security" == ieee8021x ]]; then
-    config_file="${STORAGE_PATH}/${choice}.config"
+elif [[ "$security" == ieee8021x || "$security" == psk || "$security" == wep ]]; then
+    config_file="${STORAGE_PATH}/${choice}-${security}.config"
+    identity=""
+    password=""
     if [[ -f $config_file && "no" != "$(echo -e "yes\nno" | dmenu -p "Use previous profile?")" ]]; then
         echo "use old profile: $config_file"
     else
-
         # create service file
-        identity="$(: | dmenu -p "Please provide identity")"
+        [[ "$security" == ieee8021x ]] && identity="$(: | dmenu -p "Please provide identity")"
         password="$(: | dmenu -p "Please provide password")"
 
-        if [[ "$identity" == "" || "$password" == "" ]]; then
+        if [[ "$password" == "" ]]; then
             dmenu_notify "Invalid identity or password"
             exit 1
         fi
-
-        cat > "${STORAGE_PATH}/${choice}.config" <<EOF
+        if [[ "$security" == ieee8021x ]]; then
+        cat > $config_file <<EOF
 [service_$service_id]
 Type = wifi
 Name = $choice
@@ -70,6 +68,14 @@ Phase2 = MSCHAPV2
 Identity = $identity
 Passphrase = $password
 EOF
+        elif [[ "$security" == psk || "$security" == wep ]]; then 
+        cat > $config_file <<EOF
+[service_$service_id]
+Type = wifi
+Name = $choice
+Passphrase = $password
+EOF
+        fi
     fi
 
 fi
