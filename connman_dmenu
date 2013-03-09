@@ -1,6 +1,77 @@
 #!/bin/bash
-connmanctl scan wifi
-choice="$(connmanctl services | grep _none | tr -s ' ' | cut -f2 -d ' ' | dmenu -p "select wifi")"
-id="$(connmanctl services | grep _none | tr -s ' ' | cut -f2,4 -d ' ' | grep "^$choice " -m 1 | cut -f 2 -d ' ')"
-echo "select: $choice { $id }"
-connmanctl connect "$id"
+SCAN_RESULT=/tmp/connman.scan
+STORAGE_PATH=/var/lib/connman
+
+get_services() {
+    connmanctl scan wifi &>/dev/null
+    connmanctl services | tr -s ' ' | cut -f2,4 -d ' ' > $SCAN_RESULT
+    trap "rm $SCAN_RESULT" EXIT
+    cat $SCAN_RESULT | cut -d ' ' -f 1
+}
+
+count_services() {
+    [[ -f $SCAN_RESULT ]] && wc -l < $SCAN_RESULT || echo 0
+}
+
+# $1 = name
+name_to_service() {
+    [[ -f $SCAN_RESULT ]] || exit 1
+    grep "^$1 " -m 1 $SCAN_RESULT | cut -d ' ' -f 2
+}
+
+# $1 = service id
+get_service_security() {
+    echo "$1" | cut -d _ -f 5
+}
+
+# $1 = msg
+dmenu_notify() {
+    : | dmenu -p "$1 (press enter)"
+}
+
+if [[ $EUID != 0 ]]; then 
+    dmenu_notify "Please run it as root"
+    exit 1
+fi
+
+choice="$(get_services | dmenu -l "$(count_services)" -i -p "Select one wifi service")"
+service_id="$(name_to_service "$choice")"
+[[ "$service_id" == "" ]] && exit 1
+echo "$choice { $service_id }"
+
+security="$(get_service_security "$service_id")"
+if [[ "$security" == none ]]; then
+    # do nothing
+    echo "no security"
+elif [[ "$security" == wep ]]; then
+    dmenu_notify "really? you use wep?"
+    exit 1
+elif [[ "$security" == ieee8021x ]]; then
+    config_file="${STORAGE_PATH}/${choice}.config"
+    if [[ -f $config_file && "no" != "$(echo -e "yes\nno" | dmenu -p "Use previous profile?")" ]]; then
+        echo "use old profile: $config_file"
+    else
+
+        # create service file
+        identity="$(: | dmenu -p "Please provide identity")"
+        password="$(: | dmenu -p "Please provide password")"
+
+        if [[ "$identity" == "" || "$password" == "" ]]; then
+            dmenu_notify "Invalid identity or password"
+            exit 1
+        fi
+
+        cat > "${STORAGE_PATH}/${choice}.config" <<EOF
+[service_$service_id]
+Type = wifi
+Name = $choice
+EAP = peap
+Phase2 = MSCHAPV2
+Identity = $identity
+Passphrase = $password
+EOF
+    fi
+
+fi
+
+connmanctl connect "$service_id"
