@@ -5,8 +5,7 @@ STORAGE_PATH=/var/lib/connman
 get_services() {
     connmanctl scan wifi &>/dev/null
     connmanctl services | tr -s ' ' | cut -f2,4 -d ' ' > $SCAN_RESULT
-    trap "rm $SCAN_RESULT" EXIT
-    cat $SCAN_RESULT | cut -d ' ' -f 1
+    trap "rm -f $SCAN_RESULT" EXIT
 }
 
 count_services() {
@@ -24,6 +23,24 @@ get_service_security() {
     echo "$1" | cut -d _ -f 5
 }
 
+# $1 = service id
+get_service_signal() {
+    connmanctl services --properties "$1" | grep Strength | tr -s ' ' | cut -d ' ' -f 4
+}
+
+create_dmenu() {
+    [[ -f $SCAN_RESULT ]] || exit 1
+    IFS=$'\n'
+    for line in $(cat $SCAN_RESULT); do
+        local service_id="$(echo "$line" | cut -d ' ' -f 2)"
+        local name="$(echo "$line" | cut -d ' ' -f 1)"
+        local security="$(get_service_security "$service_id")"
+        local signal="$(get_service_signal "$service_id")"
+
+        echo "$name [security: $security] [signal: $signal]"
+    done
+}
+
 # $1 = msg
 dmenu_notify() {
     : | dmenu -p "$1 (press enter)"
@@ -34,7 +51,8 @@ if [[ $EUID != 0 ]]; then
     exit 1
 fi
 
-choice="$(get_services | dmenu -l "$(count_services)" -i -p "Select one wifi service")"
+get_services
+choice="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select one wifi service" | cut -d ' ' -f 1)"
 service_id="$(name_to_service "$choice")"
 [[ "$service_id" == "" ]] && exit 1
 echo "$choice { $service_id }"
