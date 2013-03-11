@@ -3,9 +3,17 @@ SCAN_RESULT=/tmp/connman.scan
 STORAGE_PATH=/var/lib/connman
 
 get_services() {
-    connmanctl scan wifi &>/dev/null
-    connmanctl services | tr -s ' ' | cut -f2,4 -d ' ' > $SCAN_RESULT
+    : > $SCAN_RESULT
     trap "rm -f $SCAN_RESULT" EXIT
+    connmanctl scan wifi &>/dev/null
+    IFS=$'\n'
+    for line in $(connmanctl services | tr -s ' '); do
+        local count="$(echo -n "$line" | sed 's/[^ ]//g' | wc -c)"
+        (( count++ ))
+        local name="$(echo "$line" | cut -d ' ' -f "2-$(( count - 3 ))" --output-delimiter _)"
+        local service_id="$(echo "$line" | cut -d ' ' -f "$(( count - 1 ))")"
+        echo "$name $service_id" >> $SCAN_RESULT
+    done
 }
 
 count_services() {
@@ -25,7 +33,7 @@ get_service_security() {
 
 # $1 = service id
 get_service_signal() {
-    connmanctl services --properties "$1" | grep Strength | tr -s ' ' | cut -d ' ' -f 4
+    connmanctl services "$1" | grep Strength | tr -s ' ' | cut -d ' ' -f 4
 }
 
 create_dmenu() {
