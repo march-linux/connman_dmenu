@@ -36,6 +36,11 @@ get_service_signal() {
     connmanctl services "$1" | grep Strength | tr -s ' ' | cut -d ' ' -f 4
 }
 
+# $1 = service id
+get_service_state() {
+    connmanctl services "$1" | grep State | tr -s ' ' | cut -d ' ' -f 4
+}
+
 create_dmenu() {
     [[ -f $SCAN_RESULT ]] || exit 1
     IFS=$'\n'
@@ -64,6 +69,11 @@ choice="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select one wifi ser
 service_id="$(name_to_service "$choice")"
 [[ "$service_id" == "" ]] && exit 1
 echo "$choice { $service_id }"
+
+if [[ "online" == "$(get_service_state "$service_id")" ]]; then
+    dmenu_notify "Already connected"
+    exit 0
+fi
 
 security="$(get_service_security "$service_id")"
 if [[ "$security" == none ]]; then
@@ -106,4 +116,8 @@ EOF
 
 fi
 
-connmanctl connect "$service_id"
+if [[ "Connected" == "$(connmanctl connect "$service_id")" ]]; then
+    dmenu_notify "connected to $choice"
+else
+    dmenu_notify "cannot connect to $choice"
+fi
