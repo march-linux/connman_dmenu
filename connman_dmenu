@@ -5,6 +5,7 @@ STORAGE_PATH=/var/lib/connman
 get_services() {
     : > $SCAN_RESULT
     trap "rm -f $SCAN_RESULT" EXIT
+    connmanctl enable wifi &>/dev/null
     connmanctl scan wifi &>/dev/null
     IFS=$'\n'
     for line in $(connmanctl services | tr -s ' '); do
