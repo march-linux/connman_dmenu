@@ -16,7 +16,9 @@ get_services() {
         if (( $count >= 5 )); then
             local name="$(echo "$line" | cut -d ' ' -f "2-$(( count - 3 ))" --output-delimiter _)"
             local service_id="$(echo "$line" | cut -d ' ' -f "$(( count - 1 ))")"
-            echo "$name $service_id" >> $SCAN_RESULT
+            if [[ "$service_id" =~ ^wifi_ ]]; then
+                echo "$name $service_id" >> $SCAN_RESULT
+            fi
         fi
     done
 }
@@ -100,7 +102,7 @@ elif [[ "$security" == ieee8021x || "$security" == psk || "$security" == wep ]];
             exit 1
         fi
         if [[ "$security" == ieee8021x ]]; then
-        cat > $config_file <<EOF
+            cat > $config_file <<EOF
 [service_$service_id]
 Type = wifi
 Name = $choice
@@ -110,7 +112,7 @@ Identity = $identity
 Passphrase = $password
 EOF
         elif [[ "$security" == psk || "$security" == wep ]]; then 
-        cat > $config_file <<EOF
+            cat > $config_file <<EOF
 [service_$service_id]
 Type = wifi
 Name = $choice
