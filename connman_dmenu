@@ -11,6 +11,7 @@ get_services() {
     for line in $(connmanctl services | tr -s ' '); do
         local count="$(echo -n "$line" | sed 's/[^ ]//g' | wc -c)"
         (( count++ ))
+        # count is at }
         local name="$(echo "$line" | cut -d ' ' -f "2-$(( count - 3 ))" --output-delimiter _)"
         local service_id="$(echo "$line" | cut -d ' ' -f "$(( count - 1 ))")"
         echo "$name $service_id" >> $SCAN_RESULT
@@ -72,7 +73,7 @@ service_id="$(name_to_service "$choice")"
 echo "$choice { $service_id }"
 
 if [[ "online" == "$(get_service_state "$service_id")" ]]; then
-    dmenu_notify "Already connected"
+    dmenu_notify "Already connected to $choice"
     exit 0
 fi
 
@@ -117,8 +118,10 @@ EOF
 
 fi
 
-if [[ "Connected" == "$(connmanctl connect "$service_id")" ]]; then
+connman_msg="$(connmanctl connect "$service_id" | head -n 1)"
+if [[ "Connected" == "$connman_msg" ]]; then
     dmenu_notify "connected to $choice"
 else
-    dmenu_notify "cannot connect to $choice"
+    error_msg="$(echo "$connman_msg" | cut -d ' ' -f 3-)"
+    dmenu_notify "cannot connect to $choice ($error_msg)"
 fi
