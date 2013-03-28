@@ -12,9 +12,12 @@ get_services() {
         local count="$(echo -n "$line" | sed 's/[^ ]//g' | wc -c)"
         (( count++ ))
         # count is at }
-        local name="$(echo "$line" | cut -d ' ' -f "2-$(( count - 3 ))" --output-delimiter _)"
-        local service_id="$(echo "$line" | cut -d ' ' -f "$(( count - 1 ))")"
-        echo "$name $service_id" >> $SCAN_RESULT
+        # 1. state 2. name 3. { 4. id 5. }
+        if (( $count >= 5 )); then
+            local name="$(echo "$line" | cut -d ' ' -f "2-$(( count - 3 ))" --output-delimiter _)"
+            local service_id="$(echo "$line" | cut -d ' ' -f "$(( count - 1 ))")"
+            echo "$name $service_id" >> $SCAN_RESULT
+        fi
     done
 }
 
