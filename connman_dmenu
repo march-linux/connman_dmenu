@@ -56,8 +56,10 @@ create_dmenu() {
         local name="$(echo "$line" | cut -d ' ' -f 1)"
         local security="$(get_service_security "$service_id")"
         local signal="$(get_service_signal "$service_id")"
+        local disconnect=""
+        [[ "online" == "$(get_service_state "$service_id")" ]] && disconnect="(disconnect)"
 
-        echo "$name [security: $security] [signal: $signal]"
+        echo "$name | security: $security | signal: $signal $disconnect"
     done
 }
 
@@ -78,7 +80,8 @@ service_id="$(name_to_service "$choice")"
 echo "$choice { $service_id }"
 
 if [[ "online" == "$(get_service_state "$service_id")" ]]; then
-    dmenu_notify "Already connected to $choice"
+    connmanctl disconnect "$service_id"
+    dmenu_notify "$choice disconnected"
     exit 0
 fi
 
