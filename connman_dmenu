@@ -128,8 +128,8 @@ EOF
 
 fi
 
-connman_msg="$(connmanctl connect "$service_id" | head -n 1)"
-if [[ "Connected" == "$connman_msg" ]]; then
+connman_msg="$(connmanctl connect "$service_id" 2>&1 | head -n 1)"
+if echo "$connman_msg" | grep -qi ^connected ; then
     dmenu_notify "connected to $choice"
 else
     error_msg="$(echo "$connman_msg" | cut -d ' ' -f 3-)"
