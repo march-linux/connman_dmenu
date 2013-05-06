@@ -84,7 +84,7 @@ fi
 
 get_services
 index="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select one wifi service" | cut -d ' ' -f 1)"
-[[ "$index" == "" ]] && exit 1
+[[ "$index" =~ ^[0-9]+$ ]] || exit 1
 
 name="$(index_to_name "$index")"
 service_id="$(index_to_service "$index")"
