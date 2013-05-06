@@ -10,6 +10,7 @@ get_services() {
     sleep 1
     IFS=$'\n'
     for line in $(connmanctl services | tr -s ' '); do
+        # point to the end
         local count="$(echo -n "$line" | sed 's/[^ ]//g' | wc -c)"
         (( count++ ))
         # 1. state 2. name 3. id
@@ -27,10 +28,16 @@ count_services() {
     [[ -f $SCAN_RESULT ]] && wc -l < $SCAN_RESULT || echo 0
 }
 
-# $1 = name
-name_to_service() {
+# $1 = index
+index_to_name() {
     [[ -f $SCAN_RESULT ]] || exit 1
-    grep "^$1 " -m 1 $SCAN_RESULT | cut -d ' ' -f 2
+    sed -n "$1p" $SCAN_RESULT | cut -d ' ' -f 1
+}
+
+# $1 = index
+index_to_service() {
+    [[ -f $SCAN_RESULT ]] || exit 1
+    sed -n "$1p" $SCAN_RESULT | cut -d ' ' -f 2
 }
 
 # $1 = service id
@@ -51,6 +58,7 @@ get_service_state() {
 create_dmenu() {
     [[ -f $SCAN_RESULT ]] || exit 1
     IFS=$'\n'
+    local order=1
     for line in $(cat $SCAN_RESULT); do
         local service_id="$(echo "$line" | cut -d ' ' -f 2)"
         local name="$(echo "$line" | cut -d ' ' -f 1)"
@@ -59,7 +67,8 @@ create_dmenu() {
         local disconnect=""
         [[ "online" == "$(get_service_state "$service_id")" ]] && disconnect="(disconnect)"
 
-        echo "$name | security: $security | signal: $signal $disconnect"
+        echo "$order | $name | security: $security | signal: $signal $disconnect"
+        (( order++ ))
     done
 }
 
@@ -74,14 +83,15 @@ if [[ $EUID != 0 ]]; then
 fi
 
 get_services
-choice="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select one wifi service" | cut -d ' ' -f 1)"
-service_id="$(name_to_service "$choice")"
+index="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select one wifi service" | cut -d ' ' -f 1)"
+name="$(index_to_name "$index")"
+service_id="$(index_to_service "$index")"
 [[ "$service_id" == "" ]] && exit 1
-echo "$choice { $service_id }"
+echo "$name { $service_id }"
 
 if [[ "online" == "$(get_service_state "$service_id")" ]]; then
     connmanctl disconnect "$service_id"
-    dmenu_notify "$choice disconnected"
+    dmenu_notify "$name disconnected"
     exit 0
 fi
 
@@ -90,7 +100,7 @@ if [[ "$security" == none ]]; then
     # do nothing
     echo "no security"
 elif [[ "$security" == ieee8021x || "$security" == psk || "$security" == wep ]]; then
-    config_file="${STORAGE_PATH}/${choice}-${security}.config"
+    config_file="${STORAGE_PATH}/${name}-${security}.config"
     identity=""
     password=""
     if [[ -f $config_file && "no" != "$(echo -e "yes\nno" | dmenu -p "Use previous profile?")" ]]; then
@@ -108,7 +118,7 @@ elif [[ "$security" == ieee8021x || "$security" == psk || "$security" == wep ]];
             cat > $config_file <<EOF
 [service_$service_id]
 Type = wifi
-Name = $choice
+Name = $name
 EAP = peap
 Phase2 = MSCHAPV2
 Identity = $identity
@@ -118,7 +128,7 @@ EOF
             cat > $config_file <<EOF
 [service_$service_id]
 Type = wifi
-Name = $choice
+Name = $name
 Passphrase = $password
 EOF
         fi
@@ -128,8 +138,8 @@ fi
 
 connman_msg="$(connmanctl connect "$service_id" 2>&1 | head -n 1)"
 if echo "$connman_msg" | grep -qi ^connected ; then
-    dmenu_notify "connected to $choice"
+    dmenu_notify "connected to $name"
 else
     error_msg="$(echo "$connman_msg" | cut -d ' ' -f 3-)"
-    dmenu_notify "cannot connect to $choice ($error_msg)"
+    dmenu_notify "cannot connect to $name ($error_msg)"
 fi
