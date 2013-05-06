@@ -7,19 +7,17 @@ get_services() {
     trap "rm -f $SCAN_RESULT" EXIT
     connmanctl enable wifi &>/dev/null
     connmanctl scan wifi &>/dev/null
+    sleep 1
     IFS=$'\n'
-    local order=1
     for line in $(connmanctl services | tr -s ' '); do
         local count="$(echo -n "$line" | sed 's/[^ ]//g' | wc -c)"
         (( count++ ))
-        # count is at }
         # 1. state 2. name 3. id
         if (( $count >= 3 )); then
             local name="$(echo "$line" | cut -d ' ' -f "2-$(( count - 1 ))" --output-delimiter _)"
             local service_id="$(echo "$line" | cut -d ' ' -f $count)"
             if [[ "$service_id" =~ ^wifi_ ]]; then
-                echo "${name}_${order} $service_id" >> $SCAN_RESULT
-                (( order++ ))
+                echo "$name $service_id" >> $SCAN_RESULT
             fi
         fi
     done
