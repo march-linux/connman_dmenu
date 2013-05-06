@@ -84,9 +84,10 @@ fi
 
 get_services
 index="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select one wifi service" | cut -d ' ' -f 1)"
+[[ "$index" == "" ]] && exit 1
+
 name="$(index_to_name "$index")"
 service_id="$(index_to_service "$index")"
-[[ "$service_id" == "" ]] && exit 1
 echo "$name { $service_id }"
 
 if [[ "online" == "$(get_service_state "$service_id")" ]]; then
