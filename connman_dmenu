@@ -8,15 +8,15 @@ get_services() {
     connmanctl enable wifi &>/dev/null
     connmanctl scan wifi &>/dev/null
     sleep 1
-    IFS=$'\n'
+    local IFS=$'\n'
+    local line
     for line in $(connmanctl services | tr -s ' '); do
         # point to the end
-        local count="$(echo -n "$line" | sed 's/[^ ]//g' | wc -c)"
-        (( count++ ))
+        local count="$(sed 's/[^ ]//g' <<<"$line" | wc -c)"
         # 1. state 2. name 3. id
         if (( $count >= 3 )); then
-            local name="$(echo "$line" | cut -d ' ' -f "2-$(( count - 1 ))" --output-delimiter _)"
-            local service_id="$(echo "$line" | cut -d ' ' -f $count)"
+            local name="$(cut -d ' ' -f "2-$(( count - 1 ))" --output-delimiter _ <<<"$line")"
+            local service_id="$(cut -d ' ' -f $count <<<"$line")"
             if [[ "$service_id" =~ ^wifi_ ]]; then
                 echo "$name $service_id" >> $SCAN_RESULT
             fi
@@ -42,7 +42,7 @@ index_to_service() {
 
 # $1 = service id
 get_service_security() {
-    echo "$1" | cut -d _ -f 5
+    cut -d _ -f 5 <<<"$1"
 }
 
 # $1 = service id
@@ -57,11 +57,12 @@ get_service_state() {
 
 create_dmenu() {
     [[ -f $SCAN_RESULT ]] || exit 1
-    IFS=$'\n'
+    local IFS=$'\n'
     local order=1
-    for line in $(cat $SCAN_RESULT); do
-        local service_id="$(echo "$line" | cut -d ' ' -f 2)"
-        local name="$(echo "$line" | cut -d ' ' -f 1)"
+    local line
+    for line in $(< $SCAN_RESULT); do
+        local service_id="$(cut -d ' ' -f 2 <<<"$line")"
+        local name="$(cut -d ' ' -f 1 <<<"$line")"
         local security="$(get_service_security "$service_id")"
         local signal="$(get_service_signal "$service_id")"
         local disconnect=""
@@ -138,9 +139,9 @@ EOF
 fi
 
 connman_msg="$(connmanctl connect "$service_id" 2>&1 | head -n 1)"
-if echo "$connman_msg" | grep -qi ^connected ; then
+if grep -qi ^connected <<<"$connman_msg" ; then
     dmenu_notify "connected to $name"
 else
-    error_msg="$(echo "$connman_msg" | cut -d ' ' -f 3-)"
+    error_msg="$(cut -d ' ' -f 3- <<<"$connman_msg")"
     dmenu_notify "cannot connect to $name ($error_msg)"
 fi
