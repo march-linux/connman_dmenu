@@ -66,7 +66,7 @@ create_dmenu() {
         local security="$(get_service_security "$service_id")"
         local signal="$(get_service_signal "$service_id")"
         local disconnect=""
-        [[ idle != "$(get_service_state "$service_id")" ]] && disconnect="(disconnect)"
+        [[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]] && disconnect="(disconnect)"
 
         echo "$order | $name | security: $security | signal: $signal $disconnect"
         (( order++ ))
@@ -91,7 +91,7 @@ name="$(index_to_name "$index")"
 service_id="$(index_to_service "$index")"
 echo "$name { $service_id }"
 
-if [[ idle != "$(get_service_state "$service_id")" ]]; then
+if [[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]]; then
     connmanctl disconnect "$service_id"
     dmenu_notify "$name disconnected"
     exit 0
