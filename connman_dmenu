@@ -101,7 +101,7 @@ security="$(get_service_security "$service_id")"
 if [[ "$security" == none ]]; then
     # do nothing
     echo "no security"
-elif [[ "$security" == ieee8021x || "$security" == psk || "$security" == wep ]]; then
+elif [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
     config_file="${STORAGE_PATH}/${name}-${security}.config"
     identity=""
     password=""
@@ -126,7 +126,7 @@ Phase2 = MSCHAPV2
 Identity = $identity
 Passphrase = $password
 EOF
-        elif [[ "$security" == psk || "$security" == wep ]]; then 
+        elif [[ "$security" =~ ^(psk|wep)$ ]]; then 
             cat > $config_file <<EOF
 [service_$service_id]
 Type = wifi
