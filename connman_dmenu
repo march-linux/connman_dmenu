@@ -24,13 +24,13 @@ count_services() {
 # $1 = index
 index_to_name() {
     [[ -f $SCAN_RESULT ]] || exit 1
-    sed -n "$1p" $SCAN_RESULT | cut -d ' ' -f 1
+    sed -n "$1p" $SCAN_RESULT | cut -d : -f 1
 }
 
 # $1 = index
 index_to_service() {
     [[ -f $SCAN_RESULT ]] || exit 1
-    sed -n "$1p" $SCAN_RESULT | cut -d ' ' -f 2
+    sed -n "$1p" $SCAN_RESULT | cut -d : -f 2
 }
 
 # $1 = service id
