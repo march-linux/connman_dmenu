@@ -8,20 +8,13 @@ get_services() {
     connmanctl enable wifi &>/dev/null
     connmanctl scan wifi &>/dev/null
     sleep 1
-    local IFS=$'\n'
-    local line
-    for line in $(connmanctl services | tr -s ' '); do
-        # point to the end
-        local count="$(sed 's/[^ ]//g' <<<"$line" | wc -c)"
-        # 1. state 2. name 3. id
-        if (( $count >= 3 )); then
-            local name="$(cut -d ' ' -f "2-$(( count - 1 ))" --output-delimiter _ <<<"$line")"
-            local service_id="$(cut -d ' ' -f $count <<<"$line")"
-            if [[ "$service_id" =~ ^wifi_ ]]; then
-                echo "$name $service_id" >> $SCAN_RESULT
-            fi
+    while IFS=$'\n' read line && [[ "$line" =~ ^[^\ ]*\ (.*)\ ([^\ ]+)$ ]]; do
+        local name="$(tr ' ' _ <<<"${BASH_REMATCH[1]}")"
+        local service_id="${BASH_REMATCH[2]}"
+        if [[ "$service_id" =~ ^wifi_ ]]; then
+            echo "$name:$service_id" >> $SCAN_RESULT
         fi
-    done
+    done < <(connmanctl services | tr -s ' ')
 }
 
 count_services() {
@@ -57,12 +50,11 @@ get_service_state() {
 
 create_dmenu() {
     [[ -f $SCAN_RESULT ]] || exit 1
-    local IFS=$'\n'
     local order=1
     local line
+    IFS=$'\n'
     for line in $(< $SCAN_RESULT); do
-        local service_id="$(cut -d ' ' -f 2 <<<"$line")"
-        local name="$(cut -d ' ' -f 1 <<<"$line")"
+        IFS=: read name service_id <<< "$line"
         local security="$(get_service_security "$service_id")"
         local signal="$(get_service_signal "$service_id")"
         local disconnect=""
@@ -78,13 +70,13 @@ dmenu_notify() {
     : | dmenu -p "$1 (press enter)"
 }
 
-if [[ $EUID != 0 ]]; then 
+if [[ $EUID != 0 ]]; then
     dmenu_notify "Please run it as root"
     exit 1
 fi
 
 get_services
-index="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select one wifi service" | cut -d ' ' -f 1)"
+index="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select wifi service" | cut -d ' ' -f 1)"
 [[ "$index" =~ ^[0-9]+$ ]] || exit 1
 
 name="$(index_to_name "$index")"
@@ -103,20 +95,17 @@ if [[ "$security" == none ]]; then
     echo "no security"
 elif [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
     config_file="${STORAGE_PATH}/${name}-${security}.config"
-    identity=""
-    password=""
     if [[ -f $config_file && no != "$(echo -e "yes\nno" | dmenu -p "Use previous profile?")" ]]; then
         echo "use old profile: $config_file"
     else
         # create service file
-        [[ "$security" == ieee8021x ]] && identity="$(: | dmenu -p "Please provide identity")"
         password="$(: | dmenu -p "Please provide password")"
-
-        if [[ "$password" == "" ]]; then
+        if [[ ! "$password" ]]; then
             dmenu_notify "Invalid identity or password"
             exit 1
         fi
         if [[ "$security" == ieee8021x ]]; then
+            identity="$(: | dmenu -p "Please provide identity")"
             cat > $config_file <<EOF
 [service_$service_id]
 Type = wifi
@@ -126,7 +115,7 @@ Phase2 = MSCHAPV2
 Identity = $identity
 Passphrase = $password
 EOF
-        elif [[ "$security" =~ ^(psk|wep)$ ]]; then 
+        elif [[ "$security" =~ ^(psk|wep)$ ]]; then
             cat > $config_file <<EOF
 [service_$service_id]
 Type = wifi
