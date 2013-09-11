@@ -7,7 +7,7 @@ get_services() {
     trap "rm -f $SCAN_RESULT" EXIT
     connmanctl enable wifi &>/dev/null
     connmanctl scan wifi &>/dev/null
-    while IFS=$'\n' read line && [[ "$line" =~ ^[^\ ]*\ (.*)\ ([^\ ]+)$ ]]; do
+    while IFS=$'\n' read -r line && [[ "$line" =~ ^[^\ ]*\ (.*)\ ([^\ ]+)$ ]]; do
         local name="${BASH_REMATCH[1]// /_}"
         local service_id="${BASH_REMATCH[2]}"
         if [[ "$service_id" =~ ^wifi_ ]]; then
@@ -53,7 +53,7 @@ create_dmenu() {
     local line
     IFS=$'\n'
     for line in $(< $SCAN_RESULT); do
-        IFS=' ' read name service_id <<< "$line"
+        IFS=' ' read -r name service_id <<< "$line"
         local security="$(get_service_security "$service_id")"
         local signal="$(get_service_signal "$service_id")"
         local disconnect=""
