@@ -23,13 +23,13 @@ count_services() {
 # $1 = index
 index_to_name() {
     [[ -f $SCAN_RESULT ]] || exit 1
-    sed -n "$1p" $SCAN_RESULT | cut -d ' ' -f 1
+    awk -v line="$1" 'NR == line { print $1 }' $SCAN_RESULT
 }
 
 # $1 = index
 index_to_service() {
     [[ -f $SCAN_RESULT ]] || exit 1
-    sed -n "$1p" $SCAN_RESULT | cut -d ' ' -f 2
+    awk -v line="$1" 'NR == line { print $2 }' $SCAN_RESULT
 }
 
 # $1 = service id
@@ -39,12 +39,12 @@ get_service_security() {
 
 # $1 = service id
 get_service_signal() {
-    connmanctl services "$1" | grep Strength | tr -s ' ' | cut -d ' ' -f 4
+    connmanctl services "$1" | awk '$1 == "Strength" { print $3 }'
 }
 
 # $1 = service id
 get_service_state() {
-    connmanctl services "$1" | grep State | tr -s ' ' | cut -d ' ' -f 4
+    connmanctl services "$1" | awk '$1 == "State" { print $3 }'
 }
 
 create_dmenu() {
