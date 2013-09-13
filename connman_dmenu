@@ -7,11 +7,13 @@ get_services() {
     trap "rm -f $SCAN_RESULT" EXIT
     connmanctl enable wifi &>/dev/null
     connmanctl scan wifi &>/dev/null
-    while IFS=$'\n' read -r line && [[ "$line" =~ ^[^\ ]*\ (.*)\ ([^\ ]+)$ ]]; do
-        local name="${BASH_REMATCH[1]// /_}"
-        local service_id="${BASH_REMATCH[2]}"
-        if [[ "$service_id" =~ ^wifi_ ]]; then
-            echo "$name $service_id"
+    while IFS=$'\n' read -r line; do
+        if [[ "$line" =~ ^[^\ ]*\ (.*)\ ([^\ ]+)$ ]]; then
+            local name="${BASH_REMATCH[1]// /_}"
+            local service_id="${BASH_REMATCH[2]}"
+            if [[ "$service_id" =~ ^wifi_ ]]; then
+                echo "$name $service_id"
+            fi
         fi
     done < <(connmanctl services | tr -s ' ') >> $SCAN_RESULT
 }
