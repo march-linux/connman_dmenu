@@ -3,6 +3,10 @@ SCAN_RESULT=/tmp/connman.scan
 STORAGE_PATH=/var/lib/connman
 
 get_services() {
+    if [[ -f $SCAN_RESULT ]]; then
+        dmenu_notify "another connman_dmenu is running"
+        exit 1
+    fi
     : > $SCAN_RESULT
     trap "rm -f $SCAN_RESULT" EXIT
     connmanctl enable wifi &>/dev/null
