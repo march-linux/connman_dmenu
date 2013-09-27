@@ -131,10 +131,11 @@ EOF
 
 fi
 
-connman_msg="$(connmanctl connect "$service_id" 2>&1 | head -n 1)"
+connman_msg="$(timeout 5 connmanctl connect "$service_id" 2>&1 | head -n 1)"
 if grep -qi ^connected <<<"$connman_msg" ; then
     dmenu_notify "connected to $name"
 else
-    error_msg="$(cut -d ' ' -f 3- <<<"$connman_msg")"
+    error_msg="automatic timeout for connman_dmenu"
+    [[ "$connman_msg" ]] && error_msg="$(cut -d ' ' -f 3- <<<"$connman_msg")"
     dmenu_notify "cannot connect to $name ($error_msg)"
 fi
