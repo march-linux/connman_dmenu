@@ -12,7 +12,7 @@ get_services() {
     connmanctl enable wifi &>/dev/null
     connmanctl scan wifi &>/dev/null
     local line
-    while IFS=$'\n' read -r line; do
+    while IFS= read -r line; do
         if [[ "$line" =~ ^[^\ ]*\ (.*)\ ([^\ ]+)$ ]]; then
             local name="${BASH_REMATCH[1]// /_}"
             local service_id="${BASH_REMATCH[2]}"
@@ -58,7 +58,7 @@ create_dmenu() {
     [[ -f $SCAN_RESULT ]] || exit 1
     local order=1
     local line
-    IFS=$'\n'
+    IFS=
     for line in $(< $SCAN_RESULT); do
         local name
         local service_id
