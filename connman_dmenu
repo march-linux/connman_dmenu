@@ -58,7 +58,7 @@ create_dmenu() {
     [[ -f $SCAN_RESULT ]] || exit 1
     local order=1
     local line
-    IFS=
+    IFS=$'\n'
     for line in $(< $SCAN_RESULT); do
         local name
         local service_id
