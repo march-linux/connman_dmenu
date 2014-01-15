@@ -82,6 +82,16 @@ dmenu_notify() {
 	: | dmenu -p "$1 (press enter)"
 }
 
+# $1 = question
+# $2 = var name
+dmenu_ask() {
+	: | dmenu -p "$1" | read -r "$2"
+	if [[ ! "${!2}" ]]; then
+		dmenu_notify "Invalid $2"
+		exit 1
+	fi
+}
+
 if [[ $EUID != 0 ]]; then
 	dmenu_notify "Please run it as root"
 	exit 1
@@ -92,26 +102,11 @@ index="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select wifi service"
 
 if [[ "$index" == setup ]] ; then
 	# create vpn mode
-	name="$(: | dmenu -p "Name this PPTP VPN" | tr ' ' _)"
-	if [[ ! "$name" ]]; then
-		dmenu_notify "Invalid vpn name"
-		exit 1
-	fi
-	domain="$(: | dmenu -p "Please provide VPN domain")"
-	if [[ ! "$domain" ]]; then
-		dmenu_notify "Invalid vpn domain"
-		exit 1
-	fi
-	identity="$(: | dmenu -p "Please provide identity")"
-	if [[ ! "$identity" ]]; then
-		dmenu_notify "Invalid vpn identity"
-		exit 1
-	fi
-	password="$(: | dmenu -p "Please provide password")"
-	if [[ ! "$password" ]]; then
-		dmenu_notify "Invalid vpn password"
-		exit 1
-	fi
+	dmenu_ask "Name this PPTP VPN" name
+	name="${name// /_}"
+	dmenu_ask "Please provide VPN domain" domain
+	dmenu_ask "Please provide identity" identity
+	dmenu_ask "Please provide password" password
 	cat > "${VPN_STORAGE_PATH}/${name}.config" <<-EOF
 	[provider_$name]
 	Type = PPTP
@@ -145,17 +140,9 @@ if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
 	if [[ -f $config_file && no != "$(echo -e "yes\nno" | dmenu -p "Use previous profile?")" ]]; then
 		echo "use old profile: $config_file"
 	else
-		password="$(: | dmenu -p "Please provide password")"
-		if [[ ! "$password" ]]; then
-			dmenu_notify "Invalid password"
-			exit 1
-		fi
+		dmenu_ask "Please provide password" password
 		if [[ "$security" == ieee8021x ]]; then
-			identity="$(: | dmenu -p "Please provide identity")"
-			if [[ ! "$identity" ]]; then
-				dmenu_notify "Invalid identity"
-				exit 1
-			fi
+			dmenu_ask "Please provide identity" identity
 			cat > $config_file <<-EOF
 			[service_$service_id]
 			Type = wifi
