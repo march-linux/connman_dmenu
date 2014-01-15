@@ -163,7 +163,7 @@ if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
 	fi
 fi
 
-connman_msg="$(timeout 5 connmanctl connect "$service_id" 2>&1 | head -n 1)"
+connman_msg="$(timeout 10 connmanctl connect "$service_id" 2>&1 | head -n 1)"
 if grep -qi ^connected <<<"$connman_msg" ; then
 	dmenu_notify "connected to $name"
 else
