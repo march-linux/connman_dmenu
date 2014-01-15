@@ -1,145 +1,166 @@
 #!/bin/bash
 SCAN_RESULT=/tmp/connman.scan
 STORAGE_PATH=/var/lib/connman
+VPN_STORAGE_PATH=/var/lib/connman-vpn
 
 get_services() {
-    if [[ -f $SCAN_RESULT ]]; then
-        dmenu_notify "another connman_dmenu is running"
-        exit 1
-    fi
-    : > $SCAN_RESULT
-    trap "rm -f $SCAN_RESULT" EXIT
-    connmanctl enable wifi &>/dev/null
-    connmanctl scan wifi &>/dev/null
-    local line
-    while IFS= read -r line; do
-        if [[ "$line" =~ ^[^\ ]*\ (.*)\ ([^\ ]+)$ ]]; then
-            local name="${BASH_REMATCH[1]// /_}"
-            local service_id="${BASH_REMATCH[2]}"
-            if [[ "$service_id" =~ ^wifi_ ]]; then
-                echo "$name $service_id"
-            fi
-        fi
-    done < <(connmanctl services | tr -s ' ') >> $SCAN_RESULT
+	if [[ -f $SCAN_RESULT ]]; then
+		dmenu_notify "another connman_dmenu is running"
+		exit 1
+	fi
+	: > $SCAN_RESULT
+	trap "rm -f $SCAN_RESULT" EXIT
+	connmanctl enable wifi &>/dev/null
+	connmanctl scan wifi &>/dev/null
+	local line
+	while IFS= read -r line; do
+		[[ "$line" =~ ^(.*)\ ([^\ ]+)$ ]] || continue
+		local name="${BASH_REMATCH[1]// /_}"
+		local service_id="${BASH_REMATCH[2]}"
+		[[ "$service_id" =~ ^(wifi|vpn)_ ]] && echo "$name $service_id"
+	done < <(connmanctl services | sed 's/^.\{4\}//g' | tr -s ' ') >> $SCAN_RESULT
 }
 
 count_services() {
-    [[ -f $SCAN_RESULT ]] && wc -l < $SCAN_RESULT || echo 0
+	[[ -f $SCAN_RESULT ]] && wc -l < $SCAN_RESULT || echo 0
 }
 
 # $1 = index
 index_to_name() {
-    [[ -f $SCAN_RESULT ]] || exit 1
-    awk -v line="$1" 'NR == line { print $1 }' $SCAN_RESULT
+	[[ -f $SCAN_RESULT ]] || exit 1
+	awk -v line="$1" 'NR == line { print $1 }' $SCAN_RESULT
 }
 
 # $1 = index
 index_to_service() {
-    [[ -f $SCAN_RESULT ]] || exit 1
-    awk -v line="$1" 'NR == line { print $2 }' $SCAN_RESULT
+	[[ -f $SCAN_RESULT ]] || exit 1
+	awk -v line="$1" 'NR == line { print $2 }' $SCAN_RESULT
 }
 
 # $1 = service id
 get_service_security() {
-    cut -d _ -f 5 <<<"$1"
+	cut -d _ -f 5 <<<"$1"
 }
 
 # $1 = service id
 get_service_signal() {
-    connmanctl services "$1" | awk '$1 == "Strength" { print $3 }'
+	connmanctl services "$1" | awk '$1 == "Strength" { print $3 }'
 }
 
 # $1 = service id
 get_service_state() {
-    connmanctl services "$1" | awk '$1 == "State" { print $3 }'
+	connmanctl services "$1" | awk '$1 == "State" { print $3 }'
 }
 
 create_dmenu() {
-    [[ -f $SCAN_RESULT ]] || exit 1
-    local order=1
-    local line
-    IFS=$'\n'
-    for line in $(< $SCAN_RESULT); do
-        local name
-        local service_id
-        IFS=' ' read -r name service_id <<< "$line"
-        local security="$(get_service_security "$service_id")"
-        local signal="$(get_service_signal "$service_id")"
-        local disconnect=""
-        [[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]] && disconnect="(disconnect)"
+	[[ -f $SCAN_RESULT ]] || exit 1
+	echo "setup vpn pptp"
+	local order=1
+	local line
+	IFS=$'\n'
+	for line in $(< $SCAN_RESULT); do
+		local name
+		local service_id
+		IFS=' ' read -r name service_id <<< "$line"
 
-        echo "$order | $name | security: $security | signal: $signal $disconnect"
-        (( order++ ))
-    done
+		local disconnect=""
+		[[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]] && disconnect="(disconnect)"
+
+		if [[ "$service_id" =~ ^(wifi)_ ]]; then
+			local security="$(get_service_security "$service_id")"
+			local signal="$(get_service_signal "$service_id")"
+			echo "$order | $name | security: $security | signal: $signal $disconnect"
+		elif [[ "$service_id" =~ ^(vpn)_ ]]; then
+			echo "$order | $name | VPN $disconnect"
+		fi
+		(( order++ ))
+	done
 }
 
 # $1 = msg
 dmenu_notify() {
-    : | dmenu -p "$1 (press enter)"
+	: | dmenu -p "$1 (press enter)"
 }
 
 if [[ $EUID != 0 ]]; then
-    dmenu_notify "Please run it as root"
-    exit 1
+	dmenu_notify "Please run it as root"
+	exit 1
 fi
 
 get_services
 index="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select wifi service" | cut -d ' ' -f 1)"
-[[ "$index" =~ ^[0-9]+$ ]] || exit 1
+
+if [[ "$index" == setup ]] ; then
+	# create vpn mode
+	name="$(: | dmenu -p "Name this PPTP VPN" | tr ' ' _)"
+	domain="$(: | dmenu -p "Please provide VPN domain")"
+	identity="$(: | dmenu -p "Please provide identity")"
+	password="$(: | dmenu -p "Please provide password")"
+	cat > "${VPN_STORAGE_PATH}/${name}.config" <<-EOF
+	[provider_$name]
+	Type = PPTP
+	Name = $name
+	Host = $(dig +short "$domain")
+	Domain = $domain
+	PPTP.User = $identity
+	PPTP.Password = $password
+	EOF
+	dmenu_notify "VPN $name is created"
+	exit 0
+fi
+
+service_id="$(index_to_service "$index")"
+[[ "$service_id" ]] || exit 1
 
 name="$(index_to_name "$index")"
-service_id="$(index_to_service "$index")"
 echo "$name { $service_id }"
 
 if [[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]]; then
-    connmanctl disconnect "$service_id"
-    dmenu_notify "$name disconnected"
-    exit 0
+	connmanctl disconnect "$service_id"
+	dmenu_notify "$name disconnected"
+	exit 0
 fi
 
 security="$(get_service_security "$service_id")"
-if [[ "$security" == none ]]; then
-    # do nothing
-    echo "no security"
-elif [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
-    config_file="${STORAGE_PATH}/${name}-${security}.config"
-    if [[ -f $config_file && no != "$(echo -e "yes\nno" | dmenu -p "Use previous profile?")" ]]; then
-        echo "use old profile: $config_file"
-    else
-        # create service file
-        password="$(: | dmenu -p "Please provide password")"
-        if [[ ! "$password" ]]; then
-            dmenu_notify "Invalid identity or password"
-            exit 1
-        fi
-        if [[ "$security" == ieee8021x ]]; then
-            identity="$(: | dmenu -p "Please provide identity")"
-            cat > $config_file <<EOF
-[service_$service_id]
-Type = wifi
-Name = $name
-EAP = peap
-Phase2 = MSCHAPV2
-Identity = $identity
-Passphrase = $password
-EOF
-        elif [[ "$security" =~ ^(psk|wep)$ ]]; then
-            cat > $config_file <<EOF
-[service_$service_id]
-Type = wifi
-Name = $name
-Passphrase = $password
-EOF
-        fi
-    fi
 
+# create service file for encryption
+if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
+	config_file="${STORAGE_PATH}/${name}-${security}.config"
+	if [[ -f $config_file && no != "$(echo -e "yes\nno" | dmenu -p "Use previous profile?")" ]]; then
+		echo "use old profile: $config_file"
+	else
+		password="$(: | dmenu -p "Please provide password")"
+		if [[ ! "$password" ]]; then
+			dmenu_notify "Invalid identity or password"
+			exit 1
+		fi
+		if [[ "$security" == ieee8021x ]]; then
+			identity="$(: | dmenu -p "Please provide identity")"
+			cat > $config_file <<-EOF
+			[service_$service_id]
+			Type = wifi
+			Name = $name
+			EAP = peap
+			Phase2 = MSCHAPV2
+			Identity = $identity
+			Passphrase = $password
+			EOF
+		elif [[ "$security" =~ ^(psk|wep)$ ]]; then
+			cat > $config_file <<-EOF
+			[service_$service_id]
+			Type = wifi
+			Name = $name
+			Passphrase = $password
+			EOF
+		fi
+	fi
 fi
 
 connman_msg="$(timeout 5 connmanctl connect "$service_id" 2>&1 | head -n 1)"
 if grep -qi ^connected <<<"$connman_msg" ; then
-    dmenu_notify "connected to $name"
+	dmenu_notify "connected to $name"
 else
-    error_msg="automatic timeout for connman_dmenu"
-    [[ "$connman_msg" ]] && error_msg="$(cut -d ' ' -f 3- <<<"$connman_msg")"
-    dmenu_notify "cannot connect to $name ($error_msg)"
+	error_msg="automatic timeout for connman_dmenu"
+	[[ "$connman_msg" ]] && error_msg="$(cut -d ' ' -f 3- <<<"$connman_msg")"
+	dmenu_notify "cannot connect to $name ($error_msg)"
 fi
