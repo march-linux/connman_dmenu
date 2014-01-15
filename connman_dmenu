@@ -66,11 +66,11 @@ create_dmenu() {
 		local disconnect=""
 		[[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]] && disconnect="(disconnect)"
 
-		if [[ "$service_id" =~ ^(wifi)_ ]]; then
+		if [[ "$service_id" =~ ^wifi_ ]]; then
 			local security="$(get_service_security "$service_id")"
 			local signal="$(get_service_signal "$service_id")"
 			echo "$order | $name | security: $security | signal: $signal $disconnect"
-		elif [[ "$service_id" =~ ^(vpn)_ ]]; then
+		elif [[ "$service_id" =~ ^vpn_ ]]; then
 			echo "$order | $name | VPN $disconnect"
 		fi
 		(( order++ ))
@@ -92,7 +92,7 @@ dmenu_ask() {
 	fi
 }
 
-if [[ $EUID != 0 ]]; then
+if (( EUID != 0 )); then
 	dmenu_notify "Please run it as root"
 	exit 1
 fi
