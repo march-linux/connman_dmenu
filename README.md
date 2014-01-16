@@ -1,7 +1,7 @@
 screenshot
 ==========
 
-![screenshot](http://imgur.com/wiWyx1h)
+![Imgur](http://i.imgur.com/wiWyx1h.png?1)
 
 feature
 =======
