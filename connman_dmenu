@@ -63,14 +63,13 @@ create_dmenu() {
 		local service_id
 		local security=vpn
 		local signal
-		IFS=' ' read -r name service_id <<< "$line"
-
 		local disconnect=""
+		IFS=' ' read -r name service_id <<< "$line"
 		[[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]] && disconnect="(disconnect)"
 
 		if [[ "$service_id" =~ ^wifi_ ]]; then
-			local security="$(get_service_security "$service_id")"
-			local signal="$(get_service_signal "$service_id")"
+			security="$(get_service_security "$service_id")"
+			signal="$(get_service_signal "$service_id")"
 		fi
 		printf '%2s  %-24s%9s %-3s %s\n' "$order" "$name" "$security" "$signal" "$disconnect"
 		(( order++ ))
