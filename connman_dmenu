@@ -61,6 +61,8 @@ create_dmenu() {
 	for line in $(< $SCAN_RESULT); do
 		local name
 		local service_id
+		local security=vpn
+		local signal
 		IFS=' ' read -r name service_id <<< "$line"
 
 		local disconnect=""
@@ -69,10 +71,8 @@ create_dmenu() {
 		if [[ "$service_id" =~ ^wifi_ ]]; then
 			local security="$(get_service_security "$service_id")"
 			local signal="$(get_service_signal "$service_id")"
-			echo "$order | $name | security: $security | signal: $signal $disconnect"
-		elif [[ "$service_id" =~ ^vpn_ ]]; then
-			echo "$order | $name | VPN $disconnect"
 		fi
+		printf '%-4s%-30s%-5s%-4s%s\n' "$order" "$name" "$security" "$signal" "$disconnect"
 		(( order++ ))
 	done
 }
@@ -98,7 +98,7 @@ if (( EUID != 0 )); then
 fi
 
 get_services
-index="$(create_dmenu | dmenu -l "$(count_services)" -i -p "Select wifi service" | cut -d ' ' -f 1)"
+index="$(create_dmenu | dmenu -l "$(( $(count_services) + 1))" -i -p "Select wifi service" | cut -d ' ' -f 1)"
 
 if [[ "$index" == setup ]] ; then
 	# create vpn mode
