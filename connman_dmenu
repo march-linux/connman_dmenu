@@ -14,7 +14,7 @@ get_services() {
 	connmanctl scan wifi &>/dev/null
 	local line
 	while IFS= read -r line; do
-		[[ "$line" =~ ^(.*)\ ([^\ ]+)$ ]] || continue
+		[[ "$line" =~ ^(.+)\ ([^\ ]+)$ ]] || continue
 		local name="${BASH_REMATCH[1]// /_}"
 		local service_id="${BASH_REMATCH[2]}"
 		[[ "$service_id" =~ ^(wifi|vpn)_ ]] && echo "$name $service_id"
