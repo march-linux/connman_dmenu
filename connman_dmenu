@@ -62,7 +62,7 @@ create_dmenu() {
 		local name
 		local service_id
 		local security=vpn
-		local signal
+		local signal=""
 		local disconnect=""
 		IFS=' ' read -r name service_id <<< "$line"
 		[[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]] && disconnect="(disconnect)"
