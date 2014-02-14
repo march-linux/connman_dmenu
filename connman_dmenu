@@ -84,7 +84,7 @@ dmenu_notify() {
 # $1 = question
 # $2 = var name
 dmenu_ask() {
-	: | dmenu -p "$1" | read -r "$2"
+	IFS= read -r "$2" < <(: | dmenu -p "$1")
 	if [[ ! "${!2}" ]]; then
 		dmenu_notify "Invalid $2"
 		exit 1
