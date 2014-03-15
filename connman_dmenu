@@ -71,7 +71,7 @@ create_dmenu() {
 			security="$(get_service_security "$service_id")"
 			signal="$(get_service_signal "$service_id")"
 		fi
-		printf '%2s  %-24s%9s %-3s %s\n' "$order" "$name" "$security" "$signal" "$disconnect"
+		printf '%2s  %-40s%9s %-3s %s\n' "$order" "$name" "$security" "$signal" "$disconnect"
 		(( order++ ))
 	done
 }
