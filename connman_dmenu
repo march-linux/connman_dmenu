@@ -1,7 +1,7 @@
 #!/bin/bash
-SCAN_RESULT=/tmp/connman.scan
-STORAGE_PATH=/var/lib/connman
-VPN_STORAGE_PATH=/var/lib/connman-vpn
+readonly SCAN_RESULT=/tmp/connman.scan
+readonly STORAGE_PATH=/var/lib/connman
+readonly VPN_STORAGE_PATH=/var/lib/connman-vpn
 
 get_services() {
 	if [[ -f $SCAN_RESULT ]]; then
@@ -136,29 +136,42 @@ security="$(get_service_security "$service_id")"
 # create service file for encryption
 if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
 	config_file="${STORAGE_PATH}/${name}-${security}.config"
-	if [[ -f $config_file && no != "$(echo -e "yes\nno" | dmenu -p "Use previous profile?")" ]]; then
+	if [[ -f "$config_file" && no != "$(echo -e "yes\nno" | dmenu -p "Use previous profile?")" ]]; then
 		echo "use old profile: $config_file"
 	else
 		dmenu_ask "Please provide password" password
-		if [[ "$security" == ieee8021x ]]; then
+		case "$security" in
+		ieee8021x)
 			dmenu_ask "Please provide identity" identity
-			cat > $config_file <<-EOF
+			case "$(echo -e "PEAP/MSCHAPV2\nTTLS/PAP" | dmenu -p "What is your EAP?")" in
+			PEAP/MSCHAPV2)
+				eap=peap
+				phase2=MSCHAPV2
+			TTLS/PAP)
+				eap=ttls
+				phase2=pap
+			*)
+				dmenu_notify "Invalid EAP"
+				exit 1
+			esac
+			cat > "$config_file" <<-EOF
 			[service_$service_id]
 			Type = wifi
 			Name = $name
-			EAP = peap
-			Phase2 = MSCHAPV2
+			EAP = $eap
+			Phase2 = $phase2
 			Identity = $identity
 			Passphrase = $password
 			EOF
-		elif [[ "$security" =~ ^(psk|wep)$ ]]; then
-			cat > $config_file <<-EOF
+		psk|wep)
+			cat > "$config_file" <<-EOF
 			[service_$service_id]
 			Type = wifi
 			Name = $name
 			Passphrase = $password
 			EOF
-		fi
+		esac
+		chmod 600 "$config_file"
 	fi
 fi
 
