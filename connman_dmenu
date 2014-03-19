@@ -150,7 +150,7 @@ if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
 			;;
 			TTLS/PAP)
 				eap=ttls
-				phase2=pap
+				phase2=PAP
 			;;
 			*)
 				dmenu_notify "Invalid EAP"
