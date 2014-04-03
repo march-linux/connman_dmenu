@@ -110,7 +110,7 @@ if [[ "$index" == setup ]] ; then
 	[provider_$name]
 	Type = PPTP
 	Name = $name
-	Host = $(dig +short "$domain")
+	Host = $(dig +short A "$domain" | sort -n | head -n1)
 	Domain = $domain
 	PPTP.User = $identity
 	PPTP.Password = $password
