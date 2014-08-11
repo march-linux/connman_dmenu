@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DMENU_ARGS="$@"
+DMENU_ARGS=$@
 
 readonly SCAN_RESULT=/tmp/connman.scan
 readonly STORAGE_PATH=/var/lib/connman
@@ -100,7 +100,7 @@ if (( EUID != 0 )); then
 fi
 
 get_services
-index="$(create_dmenu | dmenu  -l "$(( $(count_services) + 1))" $DMENU_ARGS -i -p "Select wifi service" | sed 's/^ *//g' | cut -d ' ' -f 1)"
+index="$(create_dmenu | dmenu -l "$(( $(count_services) + 1))" $DMENU_ARGS -i -p "Select wifi service" | sed 's/^ *//g' | cut -d ' ' -f 1)"
 
 if [[ "$index" == setup ]] ; then
 	# create vpn mode
