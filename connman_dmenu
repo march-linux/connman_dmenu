@@ -57,8 +57,7 @@ create_dmenu() {
 	echo "setup vpn pptp"
 	local order=1
 	local line
-	IFS=$'\n'
-	for line in $(< $SCAN_RESULT); do
+	while IFS= read -r line; do
 		local name
 		local service_id
 		local security=vpn
@@ -73,7 +72,7 @@ create_dmenu() {
 		fi
 		printf '%2s  %-40s%9s %-3s %s\n' "$order" "$name" "$security" "$signal" "$disconnect"
 		(( order++ ))
-	done
+	done < $SCAN_RESULT
 }
 
 # $1 = msg
@@ -86,26 +85,26 @@ dmenu_notify() {
 dmenu_ask() {
 	IFS= read -r "$2" < <(: | dmenu -p "$1")
 	if [[ ! "${!2}" ]]; then
-		dmenu_notify "Invalid $2"
+		dmenu_notify "invalid $2"
 		exit 1
 	fi
 }
 
 if (( EUID != 0 )); then
-	dmenu_notify "Please run it as root"
+	dmenu_notify "please run it as root"
 	exit 1
 fi
 
 get_services
-index="$(create_dmenu | dmenu -l "$(( $(count_services) + 1))" -i -p "Select wifi service" | sed 's/^ *//g' | cut -d ' ' -f 1)"
+index="$(create_dmenu | dmenu -l "$(( $(count_services) + 1))" -i -p "select wifi service" | sed 's/^ *//g' | cut -d ' ' -f 1)"
 
 if [[ "$index" == setup ]] ; then
 	# create vpn mode
-	dmenu_ask "Name this PPTP VPN" name
+	dmenu_ask "name this PPTP VPN" name
 	name="${name// /_}"
-	dmenu_ask "Please provide VPN domain" domain
-	dmenu_ask "Please provide identity" identity
-	dmenu_ask "Please provide password" password
+	dmenu_ask "please provide VPN domain" domain
+	dmenu_ask "please provide identity" identity
+	dmenu_ask "please provide password" password
 	cat > "${VPN_STORAGE_PATH}/${name}.config" <<-EOF
 	[provider_$name]
 	Type = PPTP
@@ -136,14 +135,14 @@ security="$(get_service_security "$service_id")"
 # create service file for encryption
 if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
 	config_file="${STORAGE_PATH}/${name}-${security}.config"
-	if [[ -f "$config_file" && no != "$(echo -e "yes\nno" | dmenu -p "Use previous profile?")" ]]; then
+	if [[ -f "$config_file" && no != "$(echo -e "yes\nno" | dmenu -p "use previous profile?")" ]]; then
 		echo "use old profile: $config_file"
 	else
-		dmenu_ask "Please provide password" password
+		dmenu_ask "please provide password" password
 		case "$security" in
 			ieee8021x)
-				dmenu_ask "Please provide identity" identity
-				case "$(echo -e "PEAP/MSCHAPV2\nTTLS/PAP" | dmenu -p "What is your EAP?")" in
+				dmenu_ask "please provide identity" identity
+				case "$(echo -e "PEAP/MSCHAPV2\nTTLS/PAP" | dmenu -p "please specify EAP type")" in
 					PEAP/MSCHAPV2)
 						eap=peap
 						phase2=MSCHAPV2
@@ -153,7 +152,7 @@ if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
 						phase2=PAP
 						;;
 					*)
-						dmenu_notify "Invalid EAP"
+						dmenu_notify "invalid EAP"
 						exit 1
 						;;
 				esac
