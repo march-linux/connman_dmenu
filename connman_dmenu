@@ -141,40 +141,40 @@ if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
 	else
 		dmenu_ask "Please provide password" password
 		case "$security" in
-		ieee8021x)
-			dmenu_ask "Please provide identity" identity
-			case "$(echo -e "PEAP/MSCHAPV2\nTTLS/PAP" | dmenu -p "What is your EAP?")" in
-			PEAP/MSCHAPV2)
-				eap=peap
-				phase2=MSCHAPV2
-			;;
-			TTLS/PAP)
-				eap=ttls
-				phase2=PAP
-			;;
-			*)
-				dmenu_notify "Invalid EAP"
-				exit 1
-			;;
-			esac
-			cat > "$config_file" <<-EOF
-			[service_$service_id]
-			Type = wifi
-			Name = $name
-			EAP = $eap
-			Phase2 = $phase2
-			Identity = $identity
-			Passphrase = $password
-			EOF
-		;;
-		psk|wep)
-			cat > "$config_file" <<-EOF
-			[service_$service_id]
-			Type = wifi
-			Name = $name
-			Passphrase = $password
-			EOF
-		;;
+			ieee8021x)
+				dmenu_ask "Please provide identity" identity
+				case "$(echo -e "PEAP/MSCHAPV2\nTTLS/PAP" | dmenu -p "What is your EAP?")" in
+					PEAP/MSCHAPV2)
+						eap=peap
+						phase2=MSCHAPV2
+						;;
+					TTLS/PAP)
+						eap=ttls
+						phase2=PAP
+						;;
+					*)
+						dmenu_notify "Invalid EAP"
+						exit 1
+						;;
+				esac
+				cat > "$config_file" <<-EOF
+				[service_$service_id]
+				Type = wifi
+				Name = $name
+				EAP = $eap
+				Phase2 = $phase2
+				Identity = $identity
+				Passphrase = $password
+				EOF
+				;;
+			psk|wep)
+				cat > "$config_file" <<-EOF
+				[service_$service_id]
+				Type = wifi
+				Name = $name
+				Passphrase = $password
+				EOF
+				;;
 		esac
 		chmod 600 "$config_file"
 	fi
