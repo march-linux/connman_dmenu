@@ -21,10 +21,6 @@ get_services() {
 	done < <(connmanctl services | sed 's/^.\{4\}//g' | tr -s ' ') >> $SCAN_RESULT
 }
 
-count_services() {
-	[[ -f $SCAN_RESULT ]] && wc -l < $SCAN_RESULT || echo 0
-}
-
 # $1 = index
 index_to_name() {
 	[[ -f $SCAN_RESULT ]] || exit 1
@@ -96,7 +92,7 @@ if (( EUID != 0 )); then
 fi
 
 get_services
-index="$(create_dmenu | dmenu -l "$(( $(count_services) + 1))" -i -p "select wifi service" | sed 's/^ *//g' | cut -d ' ' -f 1)"
+index="$(create_dmenu | dmenu -l 10 -i -p "select wifi service" | sed 's/^ *//g' | cut -d ' ' -f 1)"
 
 if [[ "$index" == setup ]] ; then
 	# create vpn mode
