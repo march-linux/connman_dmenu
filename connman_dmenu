@@ -13,12 +13,14 @@ get_services() {
 	connmanctl enable wifi &>/dev/null
 	connmanctl scan wifi &>/dev/null
 	local line
+	local name
+	local service_id
 	while IFS= read -r line; do
 		[[ "$line" =~ ^(.+)\ ([^\ ]+)$ ]] || continue
-		local name="${BASH_REMATCH[1]// /_}"
-		local service_id="${BASH_REMATCH[2]}"
+		name="${BASH_REMATCH[1]// /_}"
+		service_id="${BASH_REMATCH[2]}"
 		[[ "$service_id" =~ ^(wifi|vpn)_ ]] && echo "$name $service_id"
-	done < <(connmanctl services | sed 's/^.\{4\}//g' | tr -s ' ') >> $SCAN_RESULT
+	done < <(connmanctl services | sed -E 's/^.{4}//g' | tr -s ' ') >> $SCAN_RESULT
 }
 
 # $1 = index
@@ -52,14 +54,15 @@ create_dmenu() {
 	[[ -f $SCAN_RESULT ]] || exit 1
 	echo "setup vpn pptp"
 	local order=1
-	local line
-	while IFS= read -r line; do
-		local name
-		local service_id
-		local security=vpn
-		local signal=""
-		local disconnect=""
-		IFS=' ' read -r name service_id <<< "$line"
+	local name
+	local service_id
+	local security
+	local signal
+	local disconnect
+	while IFS=' ' read -r name service_id; do
+		security=vpn
+		signal=""
+		disconnect=""
 		[[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]] && disconnect="(disconnect)"
 
 		if [[ "$service_id" =~ ^wifi_ ]]; then
