@@ -8,19 +8,12 @@ get_services() {
 		dmenu_notify "another connman_dmenu is running"
 		exit 1
 	fi
-	: > $SCAN_RESULT
 	trap "rm -f $SCAN_RESULT" EXIT
 	connmanctl enable wifi &>/dev/null
 	connmanctl scan wifi &>/dev/null
-	local line
-	local name
-	local service_id
-	while IFS= read -r line; do
-		[[ "$line" =~ ^(.+)\ ([^\ ]+)$ ]] || continue
-		name="${BASH_REMATCH[1]// /_}"
-		service_id="${BASH_REMATCH[2]}"
-		[[ "$service_id" =~ ^(wifi|vpn)_ ]] && echo "$name $service_id"
-	done < <(connmanctl services | sed -E 's/^.{4}//g' | tr -s ' ') >> $SCAN_RESULT
+	connmanctl services | \
+		awk -F ' +' '{ service_id=$NF; $NF=""; $1=""; name=substr($0, 2, length-2); gsub(/[^a-zA-Z0-9]/, "_", name) }
+	name { print name, service_id }' > $SCAN_RESULT
 }
 
 # $1 = index
@@ -60,15 +53,19 @@ create_dmenu() {
 	local signal
 	local disconnect
 	while IFS=' ' read -r name service_id; do
-		security=vpn
+		security=""
 		signal=""
 		disconnect=""
 		[[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]] && disconnect="(disconnect)"
-
-		if [[ "$service_id" =~ ^wifi_ ]]; then
-			security="$(get_service_security "$service_id")"
-			signal="$(get_service_signal "$service_id")"
-		fi
+		case "$service_id" in
+			wifi_*)
+				security="$(get_service_security "$service_id")"
+				signal="$(get_service_signal "$service_id")"
+				;;
+			vpn_*)
+				security=vpn
+				;;
+		esac
 		printf '%2s  %-40s%9s %-3s %s\n' "$order" "$name" "$security" "$signal" "$disconnect"
 		(( order++ ))
 	done < $SCAN_RESULT
