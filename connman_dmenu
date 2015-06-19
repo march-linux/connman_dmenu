@@ -5,7 +5,7 @@ readonly VPN_STORAGE_PATH=/var/lib/connman-vpn
 
 get_services() {
 	if [[ -f $SCAN_RESULT ]]; then
-		dmenu_notify "another connman_dmenu is running"
+		dmenu_notify 'another connman_dmenu is running'
 		exit 1
 	fi
 	trap "rm -f $SCAN_RESULT" EXIT
@@ -45,7 +45,7 @@ get_service_state() {
 
 create_dmenu() {
 	[[ -f $SCAN_RESULT ]] || exit 1
-	echo "setup vpn pptp"
+	echo 'setup vpn pptp'
 	local order=1
 	local name
 	local service_id
@@ -53,10 +53,10 @@ create_dmenu() {
 	local signal
 	local disconnect
 	while IFS=' ' read -r name service_id; do
-		security=""
-		signal=""
-		disconnect=""
-		[[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]] && disconnect="(disconnect)"
+		security=''
+		signal=''
+		disconnect=''
+		[[ ! "$(get_service_state "$service_id")" =~ ^(idle|failure)$ ]] && disconnect='(disconnect)'
 		case "$service_id" in
 			wifi_*)
 				security="$(get_service_security "$service_id")"
@@ -87,21 +87,21 @@ dmenu_ask() {
 }
 
 if (( EUID != 0 )); then
-	dmenu_notify "please run it as root"
+	dmenu_notify 'please run it as root'
 	exit 1
 fi
 
 get_services
-index="$(create_dmenu | dmenu -l 10 -i -p "select wifi service" | sed 's/^ *//g' | cut -d ' ' -f 1)"
+index="$(create_dmenu | dmenu -l 10 -i -p 'select wifi service' | sed 's/^ *//g' | cut -d ' ' -f 1)"
 
 if [[ "$index" == setup ]] ; then
 	# create vpn mode
-	dmenu_ask "name this PPTP VPN" name
+	dmenu_ask 'name this PPTP VPN' name
 	name="${name// /_}"
-	dmenu_ask "please provide VPN domain" domain
-	dmenu_ask "please provide identity" identity
-	dmenu_ask "please provide password" password
-	cat > "${VPN_STORAGE_PATH}/${name}.config" <<-EOF
+	dmenu_ask 'please provide VPN domain' domain
+	dmenu_ask 'please provide identity' identity
+	dmenu_ask 'please provide password' password
+	cat > "$VPN_STORAGE_PATH/$name.config" <<-EOF
 	[provider_$name]
 	Type = PPTP
 	Name = $name
@@ -130,15 +130,15 @@ security="$(get_service_security "$service_id")"
 
 # create service file for encryption
 if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
-	config_file="${STORAGE_PATH}/${name}-${security}.config"
-	if [[ -f "$config_file" && no != "$(echo -e "yes\nno" | dmenu -p "use previous profile?")" ]]; then
+	config_file="$STORAGE_PATH/$name-$security.config"
+	if [[ -f "$config_file" && no != "$(echo -e 'yes\nno' | dmenu -p 'use previous profile?')" ]]; then
 		echo "use old profile: $config_file"
 	else
-		dmenu_ask "please provide password" password
+		dmenu_ask 'please provide password' password
 		case "$security" in
 			ieee8021x)
-				dmenu_ask "please provide identity" identity
-				case "$(echo -e "PEAP/MSCHAPV2\nTTLS/PAP" | dmenu -p "please specify EAP type")" in
+				dmenu_ask 'please provide identity' identity
+				case "$(echo -e 'PEAP/MSCHAPV2\nTTLS/PAP' | dmenu -p 'please specify EAP type')" in
 					PEAP/MSCHAPV2)
 						eap=peap
 						phase2=MSCHAPV2
@@ -148,7 +148,7 @@ if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
 						phase2=PAP
 						;;
 					*)
-						dmenu_notify "invalid EAP"
+						dmenu_notify 'invalid EAP'
 						exit 1
 						;;
 				esac
@@ -176,10 +176,10 @@ if [[ "$security" =~ ^(ieee8021x|psk|wep)$ ]]; then
 fi
 
 connman_msg="$(timeout 10 connmanctl connect "$service_id" 2>&1 | head -n 1)"
-if grep -qi ^connected <<<"$connman_msg" ; then
+if [[ "$connman_msg" == Connected* ]]; then
 	dmenu_notify "connected to $name"
 else
-	error_msg="automatic timeout for connman_dmenu"
+	error_msg='automatic timeout for connman_dmenu'
 	[[ "$connman_msg" ]] && error_msg="$(cut -d ' ' -f 3- <<<"$connman_msg")"
 	dmenu_notify "cannot connect to $name ($error_msg)"
 fi
