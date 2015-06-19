@@ -52,7 +52,7 @@ create_dmenu() {
 	local security
 	local signal
 	local disconnect
-	while IFS=' ' read -r name service_id; do
+	while read -r name service_id; do
 		security=''
 		signal=''
 		disconnect=''
